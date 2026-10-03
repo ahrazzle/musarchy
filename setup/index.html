@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Setup — Musarchy</title>
-<meta name="description" content="Set up Musarchy on an Omarchy laptop: install the device agent and pair it with the Muse app.">
+<title>Setup guide: put Musarchy on your Omarchy laptop</title>
+<meta name="description" content="Install Musarchy on an Omarchy laptop and pair it with the Muse app: a token, one installer, one pairing step.">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
   <section>
     <h2>What you need</h2>
     <ul>
-      <li>A laptop running <strong>Omarchy 4</strong> (Arch-based), with Bluetooth.</li>
+      <li>A laptop running <strong>Omarchy 4</strong>, with Bluetooth.</li>
       <li>Internet on the laptop, and sudo access.</li>
       <li>The <strong>Muse app</strong> on your phone.</li>
       <li>An <strong>SDK token</strong> from <a href="https://gadgets.muse.ai">gadgets.muse.ai</a>
@@ -40,17 +40,17 @@
 <pre><code>curl -fsSL https://raw.githubusercontent.com/ahrazzle/musarchy/main/install.sh -o install.sh
 less install.sh   # read it first
 bash install.sh --sdk-token mgst_...</code></pre>
-    <p>The installer adds the needed packages with pacman, installs the device agent
-    and the musarchy plugin, creates a locked-down <code>muse</code> account, starts
-    the service, and opens Bluetooth pairing for 10 minutes. It prints the Bluetooth
-    device name — it looks like <code>MuseGadgetXXXXXX</code>.</p>
+    <p>The installer adds the needed packages, installs the device agent and the
+    musarchy plugin, creates a locked-down <code>muse</code> account, starts the
+    service, and opens Bluetooth pairing for 10 minutes. It prints the Bluetooth
+    device name. It looks like <code>MuseGadgetXXXXXX</code>.</p>
   </section>
 
   <section>
     <h2>2. Pair in the Muse app</h2>
     <ol class="steps">
       <li>In the Muse app, turn on <strong>Settings → Devices → Developer mode</strong>.</li>
-      <li><strong>Add Device</strong> (the <strong>+</strong> icon) and choose the
+      <li><strong>Add Device</strong> (the <strong>+</strong> icon). Choose the
         <code>MuseGadgetXXXXXX</code> name the installer printed.</li>
       <li>The app warns this is a community device. Continue if it is yours.</li>
       <li>When asked for Wi-Fi, pick the network shown. The laptop is already online,
@@ -72,9 +72,9 @@ bash install.sh --sdk-token mgst_...</code></pre>
 
   <section class="callout">
     <h2>One decision: whose files?</h2>
-    <p>By default your Muse runs as the <code>muse</code> account — no sudo, no access
-    to your personal files. Safe starting point. If you want it managing <em>your</em>
-    stuff (your home directory, your projects), reinstall with:</p>
+    <p>By default your Muse runs as the <code>muse</code> account. No sudo. No access
+    to your personal files. Safe starting point. To let it manage <em>your</em>
+    files instead, reinstall with your username:</p>
 <pre><code>bash install.sh --sdk-token mgst_... --run-as YOUR_USERNAME</code></pre>
     <p>More useful, more trust. The installer warns you when the account has sudo.</p>
   </section>
@@ -90,8 +90,8 @@ bash install.sh --sdk-token mgst_...</code></pre>
         Bluetooth off and on, then try again.</li>
       <li><strong>Something failed.</strong> The service log tells the story:
         <code>sudo journalctl -u musegadget -f</code>. Open an issue on
-        <a href="https://github.com/ahrazzle/musarchy">GitHub</a> with what you see —
-        this installer is new and your report helps.</li>
+        <a href="https://github.com/ahrazzle/musarchy">GitHub</a> with what you see.
+        This installer is new and your report helps.</li>
     </ul>
   </section>
 
