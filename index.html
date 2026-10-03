@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musarchy — Omarchy × Muse</title>
+<meta name="description" content="Musarchy turns an Omarchy laptop into a Muse gadget. Pair once, then reach your machine from the Muse app.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="/">Musarchy</a>
+  <nav>
+    <a href="/setup/">Setup guide</a>
+    <a href="https://github.com/ahrazzle/musarchy">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="kicker">Omarchy × Muse</p>
+    <h1>Your laptop,<br>reachable from your Muse.</h1>
+    <p class="lede">Musarchy installs Meta's open-source Muse device agent on an
+    Omarchy laptop and adds Hyprland-aware commands. Pair once in the Muse app,
+    then ask your Muse to run commands, move files, check on the machine,
+    list your windows, or show notifications — from your phone.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="/setup/">Setup guide</a>
+      <a class="btn" href="https://github.com/ahrazzle/musarchy">View on GitHub</a>
+    </div>
+    <p class="alpha">Alpha. The installer is new and untested on live hardware — see the setup guide.</p>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><strong>Install Omarchy 4</strong> on the laptop, from the official ISO.</li>
+      <li><strong>Run the musarchy installer.</strong> It ports the device agent to Arch,
+        creates a locked-down <code>muse</code> account, and starts the service.</li>
+      <li><strong>Pair in the Muse app.</strong> Settings → Devices → Developer mode →
+        Add Device. It reconnects on its own after reboots.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What your Muse can do</h2>
+    <table>
+      <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>system.run</code></td><td>Run a shell command, get stdout, stderr, exit code</td></tr>
+        <tr><td><code>file.read</code> / <code>file.write</code></td><td>Read and write files in chunks</td></tr>
+        <tr><td><code>device.health</code></td><td>Uptime, load, memory, disk, temperature</td></tr>
+        <tr><td><code>desktop.run</code></td><td>Run a command inside your graphical Hyprland session</td></tr>
+        <tr><td><code>desktop.windows</code></td><td>List open windows: app, title, workspace, focus</td></tr>
+        <tr><td><code>desktop.notify</code></td><td>Show a desktop notification on your screen</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Built on open source, not a fork</h2>
+    <p>Musarchy is a layer, not a fork. Omarchy stays stock, Meta's device SDK
+    stays pinned to an upstream commit, and musarchy is the glue between them:
+    an Arch-ported installer, a plugin that adds the desktop commands, and a
+    hardened service setup. Upgrading either side is a version bump, not a rebase.</p>
+  </section>
+
+  <section>
+    <h2>Security in one paragraph</h2>
+    <p>Your Muse gets the permissions of the <code>muse</code> account: no sudo,
+    no password login, no access to your files. There is no command allowlist —
+    if you ask it to do something destructive as that account, it can. Pair on
+    a network you trust. The full model is in
+    <a href="https://github.com/ahrazzle/musarchy/blob/main/docs/SECURITY.md">docs/SECURITY.md</a>.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="/setup/">Setup guide</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Musarchy is Apache-2.0. Device agent: <a href="https://github.com/facebookincubator/muse-gadget-sdk">muse-gadget-sdk</a> (Meta, Apache-2.0).
+  Desktop: <a href="https://github.com/omacom/omarchy">Omarchy</a> (MIT). Not affiliated with either project.</p>
+</footer>
+</body>
+</html>

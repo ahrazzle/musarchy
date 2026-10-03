@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup — Musarchy</title>
+<meta name="description" content="Set up Musarchy on an Omarchy laptop: install the device agent and pair it with the Muse app.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="/">Musarchy</a>
+  <nav>
+    <a href="/setup/" class="active">Setup guide</a>
+    <a href="https://github.com/ahrazzle/musarchy">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero slim">
+    <p class="kicker">Setup guide</p>
+    <h1>Get your laptop on Muse.</h1>
+    <p class="lede">About ten minutes: a token, one installer, one pairing step in the app.</p>
+  </section>
+
+  <section>
+    <h2>What you need</h2>
+    <ul>
+      <li>A laptop running <strong>Omarchy 4</strong> (Arch-based), with Bluetooth.</li>
+      <li>Internet on the laptop, and sudo access.</li>
+      <li>The <strong>Muse app</strong> on your phone.</li>
+      <li>An <strong>SDK token</strong> from <a href="https://gadgets.muse.ai">gadgets.muse.ai</a>
+        (Account → SDK tokens). Read the Gadget SDK Terms there first.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>1. Run the installer</h2>
+    <p>On the Omarchy laptop:</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/ahrazzle/musarchy/main/install.sh -o install.sh
+less install.sh   # read it first
+bash install.sh --sdk-token mgst_...</code></pre>
+    <p>The installer adds the needed packages with pacman, installs the device agent
+    and the musarchy plugin, creates a locked-down <code>muse</code> account, starts
+    the service, and opens Bluetooth pairing for 10 minutes. It prints the Bluetooth
+    device name — it looks like <code>MuseGadgetXXXXXX</code>.</p>
+  </section>
+
+  <section>
+    <h2>2. Pair in the Muse app</h2>
+    <ol class="steps">
+      <li>In the Muse app, turn on <strong>Settings → Devices → Developer mode</strong>.</li>
+      <li><strong>Add Device</strong> (the <strong>+</strong> icon) and choose the
+        <code>MuseGadgetXXXXXX</code> name the installer printed.</li>
+      <li>The app warns this is a community device. Continue if it is yours.</li>
+      <li>When asked for Wi-Fi, pick the network shown. The laptop is already online,
+        so no password is needed.</li>
+    </ol>
+    <p>Done. The device stays connected across reboots. To open pairing again later,
+    run <code>sudo musegadget pair</code> on the laptop.</p>
+  </section>
+
+  <section>
+    <h2>3. Try it</h2>
+    <p>Ask your Muse things like:</p>
+    <ul>
+      <li>“What windows do I have open on my laptop?”</li>
+      <li>“How much disk space is free?”</li>
+      <li>“Show a notification on my screen that says the backup finished.”</li>
+    </ul>
+  </section>
+
+  <section class="callout">
+    <h2>One decision: whose files?</h2>
+    <p>By default your Muse runs as the <code>muse</code> account — no sudo, no access
+    to your personal files. Safe starting point. If you want it managing <em>your</em>
+    stuff (your home directory, your projects), reinstall with:</p>
+<pre><code>bash install.sh --sdk-token mgst_... --run-as YOUR_USERNAME</code></pre>
+    <p>More useful, more trust. The installer warns you when the account has sudo.</p>
+  </section>
+
+  <section>
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li><strong>No Bluetooth adapter warning during install.</strong> Pairing needs
+        Bluetooth LE. It cannot work until an adapter is present.</li>
+      <li><strong>Pairing window expired.</strong> Run <code>sudo musegadget pair</code>
+        to open it again.</li>
+      <li><strong>iPhone shows a generic connection error.</strong> Toggle the phone's
+        Bluetooth off and on, then try again.</li>
+      <li><strong>Something failed.</strong> The service log tells the story:
+        <code>sudo journalctl -u musegadget -f</code>. Open an issue on
+        <a href="https://github.com/ahrazzle/musarchy">GitHub</a> with what you see —
+        this installer is new and your report helps.</li>
+    </ul>
+  </section>
+
+  <div class="cta-row">
+    <a class="btn" href="/">← Back to Musarchy</a>
+    <a class="btn primary" href="https://github.com/ahrazzle/musarchy">View on GitHub</a>
+  </div>
+</main>
+
+<footer>
+  <p>Musarchy is Apache-2.0. Not affiliated with Meta or the Omarchy project.</p>
+</footer>
+</body>
+</html>
