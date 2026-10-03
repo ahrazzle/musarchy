@@ -1,0 +1,16 @@
+# Copyright (c) 2026 musarchy contributors.
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "musarchy-plugin"
+version = "0.1.0a1"
+description = "Omarchy desktop commands for the Muse Linux device agent"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["src"]

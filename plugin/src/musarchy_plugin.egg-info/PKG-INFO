@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: musarchy-plugin
+Version: 0.1.0a1
+Summary: Omarchy desktop commands for the Muse Linux device agent
+License-Expression: Apache-2.0
+Requires-Python: >=3.9

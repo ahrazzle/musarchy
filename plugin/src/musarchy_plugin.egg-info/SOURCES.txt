@@ -1,0 +1,9 @@
+pyproject.toml
+src/musarchy_plugin/__init__.py
+src/musarchy_plugin/__main__.py
+src/musarchy_plugin/desktop.py
+src/musarchy_plugin/wiring.py
+src/musarchy_plugin.egg-info/PKG-INFO
+src/musarchy_plugin.egg-info/SOURCES.txt
+src/musarchy_plugin.egg-info/dependency_links.txt
+src/musarchy_plugin.egg-info/top_level.txt
