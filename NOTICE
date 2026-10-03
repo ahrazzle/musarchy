@@ -2,8 +2,8 @@ musarchy
 Copyright (c) 2026 musarchy contributors.
 
 This project combines work from the following upstream projects. Their
-licenses apply to their respective parts; see LICENSE for the license
-covering musarchy's own code.
+licenses apply to their own parts. See LICENSE for the license covering
+musarchy's own code.
 
 1. muse-gadget-sdk (linux/)
    Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -16,4 +16,4 @@ covering musarchy's own code.
    Licensed under the MIT License.
    https://github.com/omacom/omarchy
    Musarchy installs on stock Omarchy and is not a fork of it. It is not
-   affiliated with or endorsed by the Omarchy project.
+   affiliated with the Omarchy project.
