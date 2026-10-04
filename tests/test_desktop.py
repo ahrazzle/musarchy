@@ -15,6 +15,7 @@ from musarchy_plugin.desktop import (
     DesktopError,
     desktop_notify,
     desktop_run,
+    desktop_uid,
     desktop_windows,
     session_env,
 )
@@ -178,4 +179,74 @@ def test_desktop_notify_failure(monkeypatch, tmp_path):
         lambda e, a, env, t: FakeCompletedProcess(returncode=1, stderr="no daemon"),
     )
     with pytest.raises(DesktopError, match="notify-send failed"):
+        desktop_notify(FakeExecutor(), {"summary": "x"}, None)
+
+
+def test_desktop_uid_defaults_to_run_as_account(monkeypatch):
+    monkeypatch.delenv("MUSEGADGET_DESKTOP_USER", raising=False)
+    ex = FakeExecutor()
+    ex.account.uid = 1001
+    assert desktop_uid(ex) == 1001
+
+
+def test_desktop_uid_honors_env_override(monkeypatch):
+    import types
+
+    def fake_getpwnam(name):
+        if name == "shahid":
+            return types.SimpleNamespace(pw_uid=1000)
+        raise KeyError(name)
+
+    monkeypatch.setenv("MUSEGADGET_DESKTOP_USER", "shahid")
+    monkeypatch.setattr(desktop.pwd, "getpwnam", fake_getpwnam)
+    ex = FakeExecutor()
+    ex.account.uid = 1001
+    assert desktop_uid(ex) == 1000
+
+
+def test_desktop_uid_unknown_user_falls_back(monkeypatch):
+    monkeypatch.setenv("MUSEGADGET_DESKTOP_USER", "nobody-here")
+    ex = FakeExecutor()
+    ex.account.uid = 1001
+    assert desktop_uid(ex) == 1001
+
+
+def _patched_session(monkeypatch, tmp_path):
+    make_session_tree(str(tmp_path), uid=1000)
+    real_session_env = desktop.session_env
+    monkeypatch.setattr(
+        desktop, "session_env",
+        lambda uid, runtime_base="/run/user": real_session_env(uid, str(tmp_path)),
+    )
+
+
+def test_desktop_notify_falls_back_to_hyprctl(monkeypatch, tmp_path):
+    _patched_session(monkeypatch, tmp_path)
+    calls = []
+
+    def fake_run(executor, argv, env, timeout):
+        calls.append(argv)
+        if argv[0] == "notify-send":
+            return FakeCompletedProcess(returncode=1, stderr="bus refused")
+        return FakeCompletedProcess()
+
+    monkeypatch.setattr(desktop, "_as_account", fake_run)
+    payload = desktop_notify(
+        FakeExecutor(),
+        {"summary": "Hi", "body": "there", "urgency": "critical", "expire_ms": 7000},
+        None,
+    )
+    assert payload == {"notified": True}
+    assert len(calls) == 2
+    assert calls[1][:4] == ["hyprctl", "notify", "3", "7000"]
+    assert calls[1][-1] == "Hi\nthere"
+
+
+def test_desktop_notify_both_fail(monkeypatch, tmp_path):
+    _patched_session(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        desktop, "_as_account",
+        lambda e, a, env, t: FakeCompletedProcess(returncode=1, stderr="nope"),
+    )
+    with pytest.raises(DesktopError, match="notify-send failed.*hyprctl notify failed"):
         desktop_notify(FakeExecutor(), {"summary": "x"}, None)
