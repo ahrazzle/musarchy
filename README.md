@@ -10,9 +10,9 @@ layer between them. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Status
 
-Alpha. The installer has not run on a live Arch machine yet. Bluetooth
-pairing with the app is untested. The service has not run under a real
-Hyprland session.
+Alpha. Tested on live Omarchy hardware (2026-10-04): pairing, all seven
+commands, and the desktop commands under a real Hyprland session all work.
+Bluetooth pairing with the app is untested.
 
 ## Quickstart
 
@@ -54,6 +54,13 @@ Added by musarchy:
 
 Commands run as the `muse` account. It has no sudo rights and no password
 login. Full model in [docs/SECURITY.md](docs/SECURITY.md).
+
+The desktop commands need the graphical session, which belongs to the
+person at the keyboard — usually not the `muse` account. The installer
+detects that user (or take `--desktop-user`) and the plugin then uses
+their session via `MUSEGADGET_DESKTOP_USER`, while commands still execute
+as the run-as account. `desktop.notify` tries `notify-send` first and
+falls back to Hyprland's built-in `hyprctl notify`.
 
 ## Layout
 
