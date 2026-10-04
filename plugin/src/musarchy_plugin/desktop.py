@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import pwd
 import subprocess
 
 HYPRCTL_TIMEOUT_S = 15
@@ -27,6 +28,24 @@ NOTIFY_TIMEOUT_S = 10
 
 class DesktopError(Exception):
     """An expected failure: bad parameters or no desktop session."""
+
+
+def desktop_uid(executor) -> int:
+    """Uid whose graphical session the desktop commands should use.
+
+    Defaults to the run-as account. Set MUSEGADGET_DESKTOP_USER to a
+    username (for example the person actually logged into the desktop)
+    to point the desktop commands at that user's session instead, while
+    commands still execute as the run-as account. Unknown usernames fall
+    back to the run-as account.
+    """
+    name = os.environ.get("MUSEGADGET_DESKTOP_USER")
+    if name:
+        try:
+            return pwd.getpwnam(name).pw_uid
+        except KeyError:
+            pass
+    return executor.account.uid
 
 
 def session_env(uid: int, runtime_base: str = "/run/user") -> dict[str, str]:
@@ -105,7 +124,7 @@ def desktop_run(executor, params: dict, timeout_ms=None) -> dict:
     command = params.get("command")
     if not isinstance(command, str) or not command.strip():
         raise DesktopError("command is required")
-    env = session_env(executor.account.uid)
+    env = session_env(desktop_uid(executor))
     with _extra_env(executor, env):
         result = executor.system_run(params, timeout_ms)
     if not result.get("ok"):
@@ -121,7 +140,7 @@ def desktop_run(executor, params: dict, timeout_ms=None) -> dict:
 
 def desktop_windows(executor, params: dict, timeout_ms=None) -> dict:
     """List open windows on the Hyprland desktop via hyprctl."""
-    env = session_env(executor.account.uid)
+    env = session_env(desktop_uid(executor))
     proc = _as_account(executor, ["hyprctl", "clients", "-j"], env, HYPRCTL_TIMEOUT_S)
     if proc.returncode != 0:
         raise DesktopError("hyprctl failed: " + proc.stderr.strip()[:300])
@@ -145,7 +164,14 @@ def desktop_windows(executor, params: dict, timeout_ms=None) -> dict:
 
 
 def desktop_notify(executor, params: dict, timeout_ms=None) -> dict:
-    """Show a desktop notification with notify-send."""
+    """Show a desktop notification.
+
+    Tries notify-send first (rich notifications through the session's
+    notification daemon). Falls back to Hyprland's built-in
+    `hyprctl notify`, which also works when the agent runs as a different
+    user than the desktop owner and the session bus refuses the
+    connection, or when no notification daemon is running.
+    """
     summary = params.get("summary")
     if not isinstance(summary, str) or not summary.strip():
         raise DesktopError("summary is required")
@@ -161,12 +187,26 @@ def desktop_notify(executor, params: dict, timeout_ms=None) -> dict:
             expire_ms = int(expire_ms)
         except (TypeError, ValueError):
             raise DesktopError("expire_ms must be an integer") from None
-    env = session_env(executor.account.uid)
+    env = session_env(desktop_uid(executor))
     argv = ["notify-send", "--app-name=Musarchy", "--urgency=" + urgency]
     if expire_ms is not None:
         argv.append("--expire-time=" + str(expire_ms))
     argv += [summary, body]
     proc = _as_account(executor, argv, env, NOTIFY_TIMEOUT_S)
+    if proc.returncode == 0:
+        return {"notified": True}
+    notify_err = proc.stderr.strip()[:300]
+    # notify-send needs the session bus; when the agent runs as another
+    # user the bus may refuse the connection. The compositor's own
+    # notifications need only the Hyprland socket, which we already have.
+    icon = {"low": 1, "normal": 2, "critical": 3}[urgency]
+    time_ms = expire_ms if expire_ms is not None else 5000
+    message = summary if not body else summary + "\n" + body
+    fallback = ["hyprctl", "notify", str(icon), str(time_ms), "rgb(ff5555)", message]
+    proc = _as_account(executor, fallback, env, NOTIFY_TIMEOUT_S)
     if proc.returncode != 0:
-        raise DesktopError("notify-send failed: " + proc.stderr.strip()[:300])
+        raise DesktopError(
+            "notify-send failed: " + notify_err
+            + "; hyprctl notify failed: " + proc.stderr.strip()[:300]
+        )
     return {"notified": True}
