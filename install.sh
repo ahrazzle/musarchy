@@ -32,7 +32,7 @@ BLUEZ_CONF="/etc/bluetooth/main.conf"
 BLUEZ_DROPIN="/etc/systemd/system/bluetooth.service.d/zz-musegadget.conf"
 DEFAULT_SOURCE="git+https://github.com/facebookincubator/muse-gadget-sdk@${UPSTREAM_PIN}#subdirectory=linux"
 DEFAULT_PLUGIN_SOURCE="git+https://github.com/ahrazzle/musarchy@main#subdirectory=plugin"
-PACMAN_PACKAGES=(bluez bluez-utils python python-dbus python-gobject curl ca-certificates)
+PACMAN_PACKAGES=(bluez bluez-utils python python-dbus python-gobject curl ca-certificates acl)
 
 say() { printf '\033[1m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
@@ -50,6 +50,11 @@ Usage: install.sh [options]
   --run-as USER     Account whose permissions your Muse's commands run with.
                     Default: a dedicated 'muse' account, created if missing
                     (no sudo rights, no password login).
+  --desktop-user USER
+                    Account that owns the graphical desktop session. The
+                    desktop commands (desktop.run, desktop.windows,
+                    desktop.notify) use this user's session. Default: the
+                    user who ran the installer with sudo ($SUDO_USER).
   --sdk-token TOKEN Your mgst_ SDK token from gadgets.muse.ai. Every gadget
                     needs one to pair. Saved, readable only by root, in
                     $STATE_DIR/sdk_token.
@@ -300,6 +305,72 @@ install_service() {
     fi
 }
 
+install_desktop_access() {
+    # The desktop commands need the graphical session, which belongs to the
+    # person at the keyboard — usually not the run-as account. Point the
+    # plugin at that user's session and let the run-as account reach it.
+    local desktop_user="${DESKTOP_USER:-${SUDO_USER:-}}"
+    [ -n "$desktop_user" ] || return 0
+    if ! id "$desktop_user" >/dev/null 2>&1; then
+        warn "desktop user '$desktop_user' does not exist; skipping desktop session setup."
+        return 0
+    fi
+    if [ "$desktop_user" = "$RUN_AS" ]; then
+        say "Desktop commands will use $RUN_AS's own session."
+        return 0
+    fi
+    local uid
+    uid="$(id -u "$desktop_user")"
+    say "Desktop commands will use $desktop_user's graphical session (uid $uid)"
+    as_root install -d -m 0755 "$DROPIN_DIR"
+    as_root tee "$DROPIN_DIR/20-desktop-user.conf" >/dev/null <<EOF
+[Service]
+Environment=MUSEGADGET_DESKTOP_USER=$desktop_user
+EOF
+    # Let the run-as account reach the desktop user's session sockets
+    # (Hyprland, Wayland, D-Bus). /run/user is recreated at each login,
+    # so a path unit re-applies this whenever the session appears.
+    as_root tee /usr/local/bin/musarchy-desktop-acl.sh >/dev/null <<EOF
+#!/bin/bash
+# Give the musarchy run-as account ($RUN_AS) access to $desktop_user's
+# desktop session sockets. Safe to run repeatedly.
+R=/run/user/$uid
+[ -d "\$R" ] || exit 0
+setfacl -m u:$RUN_AS:rx "\$R"
+[ -d "\$R/hypr" ] && setfacl -R -m u:$RUN_AS:rwX "\$R/hypr"
+[ -S "\$R/bus" ] && setfacl -m u:$RUN_AS:rw "\$R/bus"
+for s in "\$R"/wayland-*; do
+    [ -S "\$s" ] && setfacl -m u:$RUN_AS:rw "\$s"
+done
+EOF
+    as_root chmod +x /usr/local/bin/musarchy-desktop-acl.sh
+    as_root tee /etc/systemd/system/musarchy-desktop-acl.service >/dev/null <<'EOF'
+[Unit]
+Description=Grant musarchy run-as account access to the desktop session
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/musarchy-desktop-acl.sh
+EOF
+    as_root tee /etc/systemd/system/musarchy-desktop-acl.path >/dev/null <<EOF
+[Unit]
+Description=Watch for the desktop user's Hyprland session
+
+[Path]
+PathExists=/run/user/$uid/hypr
+PathChanged=/run/user/$uid/hypr
+Unit=musarchy-desktop-acl.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    if systemd_running; then
+        as_root systemctl daemon-reload
+        as_root systemctl enable --now musarchy-desktop-acl.path >/dev/null 2>&1
+        as_root /usr/local/bin/musarchy-desktop-acl.sh
+    fi
+}
+
 install_hardening() {
     # Keep the service process itself tightly sandboxed. Commands still run
     # as the run-as account with that account's normal permissions; these
@@ -360,7 +431,11 @@ uninstall() {
     if systemd_running && [ -f "$UNIT" ]; then
         as_root systemctl disable --now musegadget.service >/dev/null 2>&1 || true
     fi
-    as_root rm -f "$UNIT" /usr/local/bin/musegadget
+    if systemd_running && [ -f /etc/systemd/system/musarchy-desktop-acl.path ]; then
+        as_root systemctl disable --now musarchy-desktop-acl.path >/dev/null 2>&1 || true
+    fi
+    as_root rm -f "$UNIT" /usr/local/bin/musegadget /usr/local/bin/musarchy-desktop-acl.sh
+    as_root rm -f /etc/systemd/system/musarchy-desktop-acl.service /etc/systemd/system/musarchy-desktop-acl.path
     as_root rm -rf "$DROPIN_DIR"
     if systemd_running; then as_root systemctl daemon-reload; fi
     as_root rm -rf "$PREFIX"
@@ -386,11 +461,13 @@ uninstall() {
 main() {
     SOURCE="$DEFAULT_SOURCE" PLUGIN_SOURCE="$DEFAULT_PLUGIN_SOURCE"
     RUN_AS="" SDK_TOKEN="" ASSUME_YES=0 NO_PAIR=0 UNINSTALL=0 PURGE=0
+    DESKTOP_USER=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --from) SOURCE="${2:?--from needs a value}"; shift 2 ;;
             --plugin-from) PLUGIN_SOURCE="${2:?--plugin-from needs a value}"; shift 2 ;;
             --run-as) RUN_AS="${2:?--run-as needs a value}"; shift 2 ;;
+            --desktop-user) DESKTOP_USER="${2:?--desktop-user needs a value}"; shift 2 ;;
             --sdk-token) SDK_TOKEN="${2:?--sdk-token needs a value}"; shift 2 ;;
             --yes|-y) ASSUME_YES=1; shift ;;
             --no-pair) NO_PAIR=1; shift ;;
@@ -420,6 +497,7 @@ main() {
     configure_bluez
     save_sdk_token
     install_service
+    install_desktop_access
     pair
     summary
 }
